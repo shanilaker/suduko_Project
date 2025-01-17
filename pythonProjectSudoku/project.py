@@ -438,7 +438,7 @@ FINISH_FAILURE = (-3,-3)
 list_of_boards = [example_board, perfect_board, impossible_board, bug_board,  interesting_board]
 #list_of_boards = [board1, board2]
 # print(possible_digits(board1))
-#print(fill_board(board2, possible_digits(board2)))
+print(fill_board(board1, possible_digits(board1)))
 
 # file = "solved_sudoku.txt"
 # with open(file, mode = 'w') as f:
