@@ -113,37 +113,45 @@ def valid_board(sudoku_board:list)->bool:
 A function that fills slots with one option to fill in a sudoku board
 """
 def one_stage(sudoku_board:list, possibilities:list)->tuple:
-    index_y = 0
-    more_than_one_option_x = 0
-    min_options_len_x = 0
-    min_options_len_y = 0
-    min_options_list = 9
+    still_single_options = True
 
-    for y in possibilities:
-        index_x = 0
+    while still_single_options:
+        still_single_options = False
+        index_y = 0
+        more_than_one_option_x = 0
+        min_options_len_x = 0
+        min_options_len_y = 0
+        min_options_list = 9
 
-        #If the sudoku board is invalid, we will return FINISH_FAILURE
-        if None in y:
-            return FINISH_FAILURE
-        for x in y:
+        for y in possibilities:
+            index_x = 0
 
-            #If there is one option to fill the slot, we will update the sudoku_board and the possibilities accordingly
-            if len(x) == 1:
-                sudoku_board[index_y][index_x] = x[0]
-                if valid_board(sudoku_board):
+            #If the sudoku board is invalid, we will return FINISH_FAILURE
+            if None in y:
+                return FINISH_FAILURE
+            for x in y:
+
+                #If there is one option to fill the slot, we will update the sudoku_board and the possibilities accordingly
+                if len(x) == 1:
+                    sudoku_board[index_y][index_x] = x[0]
                     possibilities[index_y][index_x] = []
-                else:
-                    sudoku_board[index_y][index_x] = -1
+                    update_possibilities_per_slot(x[0], (index_y,index_x), possibilities)
 
-            #Handles the values for the case if there is a slot that has not been filled
-            elif len(x) > 1:
-                if min_options_list > len(x):
-                    min_options_len_x = index_x
-                    min_options_len_y = index_y
-                    min_options_list = len(x)
-                more_than_one_option_x += 1
-            index_x += 1
-        index_y += 1
+                #Handles the values for the case if there is a slot that has not been filled
+                elif len(x) > 1:
+                    if min_options_list > len(x):
+                        min_options_len_x = index_x
+                        min_options_len_y = index_y
+                        min_options_list = len(x)
+                    more_than_one_option_x += 1
+                index_x += 1
+
+            #Checks if there are more slots with a single option and will update the loop to continue accordingly
+            for pos in y:
+                if len(pos) == 1:
+                    still_single_options = True
+                    break
+            index_y += 1
 
     # If there is a slot that has not been filled
     for y in sudoku_board:
@@ -151,6 +159,32 @@ def one_stage(sudoku_board:list, possibilities:list)->tuple:
             return (min_options_len_y ,min_options_len_x), NOT_FINISH
 
     return FINISH_SUCCESS
+
+"""
+A function that updates the row,
+the column and the 3x3 square of the same square
+"""
+def update_possibilities_per_slot(num:int, slot:tuple, possibilities:list)->None:
+
+    #Updating the column
+    for y in possibilities:
+        if num in y[slot[1]]:
+            y[slot[1]].remove(num)
+
+    #Updating the row
+    for x in possibilities[slot[0]]:
+        if num in x:
+            x.remove(num)
+
+    #Updating the 3x3 area
+    board_3x3 = position_3x3(slot[1],slot[0])
+    for i in possibilities[board_3x3[1][0]:board_3x3[1][1] + 1]:
+        for j in i[board_3x3[0][0]:board_3x3[0][1] + 1]:
+            if num in j:
+                j.remove(num)
+
+
+
 
 """
 A function that fills the board with the help of the user
@@ -179,11 +213,13 @@ def fill_board( sudoku_board:list, possibilities:list):
             #We will update the sudoku board and the possibilities list
             sudoku_board[square[0]][square[1]] = user_input
             possibilities[square[0]][square[1]] = []
+            update_possibilities_per_slot(user_input,square, possibilities)
 
             #If the user's placement created an invalid board
             if not valid_board(sudoku_board):
                 return FINISH_FAILURE
             result = one_stage(sudoku_board, possibilities)
+
     return FINISH_SUCCESS
 
 """
@@ -243,21 +279,17 @@ def print_board_to_file(sudoku_board:list, file_name):
         with redirect_stdout(f):
             print_board(sudoku_board)
 
-
+def is_the_board_full(sudoku_board:list)->bool:
+    for i in sudoku_board:
+        if -1 in i:
+            return False
+    return True
 
 NOT_FINISH = (-1,-1)
 FINISH_SUCCESS = (-2,-2)
 FINISH_FAILURE = (-3,-3)
 
-interesting_board = [[5,3,4,6,7,8,9,1,2],
- [6,7,2,1,9,5,3,4,8],
- [1,9,8,3,4,2,5,6,7],
- [-1,-1,-1,7,6,1,4,2,3],
- [-1,-1,-1,8,5,3,7,9,1],
- [-1,-1,-1,9,2,4,8,5,6],
- [-1,-1,-1,-1,3,7,2,8,4],
- [-1,-1,-1,-1,1,9,6,3,5],
- [-1,-1,-1,-1,8,6,1,7,9]]
+
 # l= [[5,3,-1,-1,7,-1,-1,-1,2],
 #     [6,4,-1,-1,-1,-1,1,-1,-1],
 #     [-1,-1,9,-1,-1,-1,-1,6,-1],
@@ -326,27 +358,6 @@ example_board = [[5,3,-1,-1,7,-1,-1,-1,-1],
  [-1,6,-1,-1,-1,-1,-1,-1,-1],
  [-1,-1,-1,-1,1,-1,-1,-1,-1],
  [-1,-1,-1,-1,8,-1,-1,-1,9]]
-
-impossible_board = [[5,1,6,8,4,9,7,3,2],
- [3,-1,7,6,-1,5,-1,-1,-1],
- [8,-1,9,7,-1,-1,-1,6,5],
- [1,3,5,-1,6,-1,9,-1,7],
- [4,7,2,5,9,1,-1,-1,6],
- [9,6,8,3,7,-1,-1,5,-1],
- [2,5,3,1,8,6,-1,7,4],
- [6,8,4,2,-1,7,5,-1,-1],
- [7,9,1,-1,5,-1,6,-1,8]]
-
-bug_board = [[5,3,4,6,7,8,9,1,2],
- [6,7,2,1,9,5,3,4,9],
- [1,9,8,3,4,2,5,6,7],
- [8,5,9,7,6,1,4,2,3],
- [4,2,6,8,5,3,7,9,1],
- [7,1,3,9,2,4,8,5,6],
- [9,6,1,5,3,7,2,8,4],
- [2,8,7,4,1,9,6,3,5],
- [3,4,5,2,8,6,1,7,9]]
-
 perfect_board = [[5,3,4,6,7,8,9,1,2],
  [6,7,2,1,9,5,3,4,8],
  [1,9,8,3,4,2,5,6,7],
@@ -356,6 +367,36 @@ perfect_board = [[5,3,4,6,7,8,9,1,2],
  [9,6,1,5,3,7,2,8,4],
  [2,8,7,4,1,9,6,3,5],
  [3,4,5,2,8,6,1,7,9]]
+impossible_board = [[5,1,6,8,4,9,7,3,2],
+ [3,-1,7,6,-1,5,-1,-1,-1],
+ [8,-1,9,7,-1,-1,-1,6,5],
+ [1,3,5,-1,6,-1,9,-1,7],
+ [4,7,2,5,9,1,-1,-1,6],
+ [9,6,8,3,7,-1,-1,5,-1],
+ [2,5,3,1,8,6,-1,7,4],
+ [6,8,4,2,-1,7,5,-1,-1],
+ [7,9,1,-1,5,-1,6,-1,8]]
+bug_board = [[5,3,4,6,7,8,9,1,2],
+ [6,7,2,1,9,5,3,4,9],
+ [1,9,8,3,4,2,5,6,7],
+ [8,5,9,7,6,1,4,2,3],
+ [4,2,6,8,5,3,7,9,1],
+ [7,1,3,9,2,4,8,5,6],
+ [9,6,1,5,3,7,2,8,4],
+ [2,8,7,4,1,9,6,3,5],
+ [3,4,5,2,8,6,1,7,9]]
+# This board has two solutions - one for 2 and one for 4
+interesting_board = [[5,3,4,6,7,8,9,1,2],
+ [6,7,2,1,9,5,3,4,8],
+ [1,9,8,3,4,2,5,6,7],
+ [-1,-1,-1,7,6,1,4,2,3],
+ [-1,-1,-1,8,5,3,7,9,1],
+ [-1,-1,-1,9,2,4,8,5,6],
+ [-1,-1,-1,-1,3,7,2,8,4],
+ [-1,-1,-1,-1,1,9,6,3,5],
+ [-1,-1,-1,-1,8,6,1,7,9]]
+
+
 # print(position_3x3((4,4)))
 # print(options(l,(3,0)))
 # print(possible_digits(l))
@@ -368,22 +409,65 @@ perfect_board = [[5,3,4,6,7,8,9,1,2],
 #create_random_board(s)
 # print(print_board(l))
 # print_board_to_file(interesting_board, "test.txt")
+
+board1 = [[5,-1, 4,-1, 7,-1,-1, 1,-1],
+ [6,-1, 2, 1,-1,-1, 3,-1,-1],
+ [1,-1, 8,-1, 4,-1,-1, 6,-1],
+ [-1, 5,-1,-1, 6,-1,-1, 2,-1],
+ [-1, 2,-1, 8,-1, 3,-1,-1,-1],
+ [-1,-1,-1,-1,-1, 4,-1, 5, 6],
+ [-1, 6, 1, 5, 3, 7, 2, 8, 4],
+ [-1, 8, 7,-1, 1, 9,-1, 3,-1],
+ [-1,-1,-1, 2, 8,-1,-1,-1, 9]]
+
+
+board2 = [[-1,6,-1,4,3,-1,-1,-1,1],
+ [5,-1,-1,-1,7,-1,-1,-1,-1],
+ [-1,1,-1,9,-1,-1,8,-1,-1],
+ [-1,-1,-1,-1,-1,2,3,-1,9],
+ [-1,8,-1,-1,-1,-1,-1,6,-1],
+ [-1,-1,-1,-1,-1,-1,-1,-1,-1],
+ [-1,-1,-1,-1,-1,-1,-1,-1,-1],
+ [9,-1,2,3,-1,-1,-1,-1,4],
+ [-1,-1,4,7,2,-1,-1,-1,8]]
+
 NOT_FINISH = (-1,-1)
 FINISH_SUCCESS = (-2,-2)
 FINISH_FAILURE = (-3,-3)
 
-list_of_boards = [bug_board, impossible_board, example_board, interesting_board, perfect_board]
-file = "solved_sudoku.txt"
-with open(file, mode = 'w') as f:
-    for board in list_of_boards:
-        result = fill_board(board,possible_digits(board))
-        if result == (-3,-3):
-            f.write("Board is not legit!\n")
-        elif result == (-1,-1):
-            f.write("Board is unsolvable\n")
-        elif result == (-2,-2):
-            f.write("Here is the solved board\n")
-            print_board_to_file(board, file)
+list_of_boards = [example_board, perfect_board, impossible_board, bug_board,  interesting_board]
+#list_of_boards = [board1, board2]
+# print(possible_digits(board1))
+#print(fill_board(board2, possible_digits(board2)))
+
+# file = "solved_sudoku.txt"
+# with open(file, mode = 'w') as f:
+#     for board in list_of_boards:
+#         if valid_board(board):
+#             if is_the_board_full(board):
+#                 print("Here is the solved board\n")
+#                 print_board(board)
+#                 f.write("Here is the solved board\n")
+#                 print_board_to_file(board, file)
+#             else:
+#
+#                 result = fill_board(board,possible_digits(board))
+#                 if result == (-3,-3):
+#                     print("Board is not legit!\n")
+#                     print_board(board)
+#                     f.write("Board is not legit!\n")
+#                 elif result == (-1,-1):
+#                     print("Board is unsolvable\n")
+#                     print_board(board)
+#                     f.write("Board is unsolvable\n")
+#                 elif result == (-2,-2):
+#                     print("Here is the solved board\n")
+#                     print_board(board)
+#                     f.write("Here is the solved board\n")
+#                     print_board_to_file(board, file)
+#         else:
+#             print("Board is not legit!\n")
+#             f.write("Board is not legit!\n")
 
 
 
