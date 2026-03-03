@@ -1,2 +1,2 @@
 # suduko_Project
-The suduko game final project from MTA first year
+Suduko game final project from MTA first year
